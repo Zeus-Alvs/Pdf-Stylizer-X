@@ -100,22 +100,7 @@ export default function UploadForm() {
       const targetFilename = `${documentId}.pdf`;
 
       try {
-        // --- DEBUG MANUAL DA ROTA /API/UPLOAD ANTES DO SDK ---
-        const debugRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "blob.generate-client-token",
-            payload: { pathname: `pdfs/${targetFilename}`, multipart: false, clientPayload: null }
-          })
-        });
-        
-        if (!debugRes.ok) {
-          const errorData = await debugRes.json().catch(() => ({}));
-          throw new Error(`Erro do Servidor Vercel (Status ${debugRes.status}): ${errorData.error || debugRes.statusText}`);
-        }
-
-        // 1. Tenta upload direto pelo cliente via Vercel Blob
+        // 1. Tenta upload direto pelo cliente via Vercel Blob (para Vercel / Produção)
         const blob = await upload(`pdfs/${targetFilename}`, selectedFile, {
           access: "public",
           handleUploadUrl: "/api/upload",
