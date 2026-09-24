@@ -110,8 +110,16 @@ export default function UploadForm() {
           throw new Error("Falha ao obter URL do Blob");
         }
       } catch (clientErr: any) {
-        console.warn("Client upload via Vercel Blob não disponível ou falhou, tentando Server Action...", clientErr);
-        // 2. Fallback para Server Action (ambiente local de desenvolvimento)
+        console.warn("Client upload via Vercel Blob não disponível ou falhou:", clientErr);
+        
+        // Se o arquivo for maior que 4.5MB, Server Action falhará na Vercel com 413 Payload Too Large
+        if (selectedFile.size > 4.5 * 1024 * 1024) {
+          throw new Error(
+            clientErr.message || "Erro no Vercel Blob. Verifique se a variável BLOB_READ_WRITE_TOKEN foi adicionada no painel da Vercel."
+          );
+        }
+
+        // 2. Fallback para Server Action (ambiente local de desenvolvimento / arquivos < 4.5MB)
         const formData = new FormData();
         formData.append("file", selectedFile);
         
