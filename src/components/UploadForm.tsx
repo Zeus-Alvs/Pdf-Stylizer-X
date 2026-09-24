@@ -2,7 +2,16 @@
 
 import { useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
+import { upload } from "@vercel/blob/client";
 import { uploadPdfAction } from "@/app/actions";
+
+function createSlug(filename: string) {
+  const nameWithoutExt = filename.replace(/\.pdf$/i, "");
+  return nameWithoutExt
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
 
 export default function UploadForm() {
   const [isDragging, setIsDragging] = useState(false);
@@ -80,20 +89,42 @@ export default function UploadForm() {
     if (!selectedFile) return;
     
     setIsUploading(true);
-    
+    let documentId = "";
+
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      
-      // Chama a Server Action real
-      const response = await uploadPdfAction(formData);
-      
-      if (!response.success) {
-        throw new Error(response.error);
+      const slug = createSlug(selectedFile.name) || "documento";
+      const shortUuid = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID().split("-")[0]
+        : Math.random().toString(36).substring(2, 10);
+      documentId = `${slug}_${shortUuid}`;
+      const targetFilename = `${documentId}.pdf`;
+
+      try {
+        // 1. Tenta upload direto pelo cliente via Vercel Blob (para Vercel / Produção)
+        const blob = await upload(`pdfs/${targetFilename}`, selectedFile, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+        });
+
+        if (!blob.url) {
+          throw new Error("Falha ao obter URL do Blob");
+        }
+      } catch (clientErr: any) {
+        console.warn("Client upload via Vercel Blob não disponível ou falhou, tentando Server Action...", clientErr);
+        // 2. Fallback para Server Action (ambiente local de desenvolvimento)
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        
+        const response = await uploadPdfAction(formData);
+        
+        if (!response.success || !response.id) {
+          throw new Error(response.error || "Erro ao realizar upload");
+        }
+        documentId = response.id;
       }
       
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://seudominio.com';
-      const linkGerado = `${baseUrl}/doc/${response.id}`;
+      const linkGerado = `${baseUrl}/doc/${documentId}`;
       
       setUploadSuccessLink(linkGerado);
     } catch (error: any) {
@@ -207,7 +238,7 @@ export default function UploadForm() {
           <p className="text-zinc-300 font-medium mb-1">
             Clique ou arraste o seu PDF até aqui
           </p>
-          <p className="text-sm text-zinc-500">Tamanho máximo: 10MB</p>
+          <p className="text-sm text-zinc-500">Tamanho máximo: 50MB</p>
         </div>
       ) : (
         /* 3. Arquivo Selecionado & Carregamento */
