@@ -24,9 +24,6 @@ export async function POST(request: Request): Promise<NextResponse> {
           addRandomSuffix: false,
         };
       },
-      onUploadCompleted: async ({ blob }) => {
-        console.log("Vercel Blob client upload finalizado com sucesso:", blob.url);
-      },
     });
 
     return NextResponse.json(jsonResponse);
