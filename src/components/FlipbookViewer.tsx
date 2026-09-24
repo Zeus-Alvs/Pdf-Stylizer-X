@@ -183,7 +183,7 @@ export default function FlipbookViewer({ blobUrl }: FlipbookViewerProps) {
               height={pageHeight} 
               size="fixed"
               usePortrait={isPortrait}
-              showCover={false}
+              showCover={true}
               mobileScrollSupport={false}
               swipeDistance={30}
               flippingTime={800}
